@@ -7,6 +7,8 @@ import { Route } from "@/routes/guides/$slug/index";
 
 vi.mock("@/lib/api/guides", () => ({ getGuide: vi.fn() }));
 vi.mock("@/lib/api/objectives", () => ({ getObjective: vi.fn() }));
+// The route pulls in the auth context, whose client needs env vars on import.
+vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 
 const node = (
   id: string,
