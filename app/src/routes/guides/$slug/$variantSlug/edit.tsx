@@ -390,6 +390,7 @@ function EditGuidePage() {
             body: snapshot.revision.body,
             change_summary: snapshot.revision.change_summary,
             subjectIds: snapshot.subjects.map((subject) => subject.id),
+            disclaimers: snapshot.disclaimers,
           },
           fields
         )

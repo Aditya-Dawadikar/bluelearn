@@ -11,6 +11,9 @@ const DISCLAIMER_LABELS: Record<DisclaimerSlug, string> = {
   profanity: "Profanity",
 };
 
+export const disclaimerLabel = (slug: DisclaimerSlug) =>
+  DISCLAIMER_LABELS[slug];
+
 export const DISCLAIMER_OPTIONS = disclaimerSlugs.map((value) => ({
   value,
   label: DISCLAIMER_LABELS[value],

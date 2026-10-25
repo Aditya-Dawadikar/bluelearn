@@ -277,3 +277,87 @@ describe("disclaimers on revise", () => {
     expect(await revisionDisclaimers(revision_id)).toEqual(["legal"]);
   });
 });
+
+describe("disclaimers in review", () => {
+  it("come back with the case's revision", async () => {
+    const author = await makeUser();
+    const { guide } = await publishedWithDraft(author.userId, ["medical"]);
+    const edit = await createGuideRevision(guide.id, { title: "Edited" });
+    await replaceRevisionDisclaimers(admin, edit.id, ["legal"]);
+    const { reviewCase, panelists } = await seedSeatedReviewCase({
+      caseType: "guide_edit",
+      seats: 3,
+      revisionId: edit.id,
+    });
+
+    const res = await app.request(
+      `/reviews/cases/${reviewCase.id}`,
+      auth(panelists[0].token),
+      env
+    );
+
+    expect(res.status).toBe(200);
+    await expectToMatchSpec(res, "GET", "/reviews/cases/{id}");
+    const body = (await res.json()) as {
+      revision: { disclaimers: string[] };
+    };
+    expect(body.revision.disclaimers).toEqual(["legal"]);
+  });
+
+  it("show up in the diff against the previous revision", async () => {
+    const author = await makeUser();
+    const { guide, revision } = await createPublishedGuide({
+      authorId: author.userId,
+    });
+    await replaceRevisionDisclaimers(admin, revision.id, [
+      "financial",
+      "medical",
+    ]);
+    const edit = await createGuideRevision(guide.id, {
+      status: "submitted",
+      author_id: author.userId,
+    });
+    await replaceRevisionDisclaimers(admin, edit.id, ["legal", "medical"]);
+
+    const res = await app.request(
+      `/guide-revisions/${edit.id}/diff/prev`,
+      {},
+      env
+    );
+
+    expect(res.status).toBe(200);
+    await expectToMatchSpec(res, "GET", "/guide-revisions/{id}/diff/prev");
+    const body = (await res.json()) as { disclaimers: unknown };
+    expect(body.disclaimers).toEqual({
+      changed: true,
+      added: ["legal"],
+      removed: ["financial"],
+      unchanged: ["medical"],
+    });
+  });
+
+  it("diff as unchanged when the set is the same", async () => {
+    const author = await makeUser();
+    const { guide, revision } = await createPublishedGuide({
+      authorId: author.userId,
+    });
+    await replaceRevisionDisclaimers(admin, revision.id, ["medical"]);
+    const edit = await createGuideRevision(guide.id, {
+      status: "submitted",
+      author_id: author.userId,
+    });
+    await replaceRevisionDisclaimers(admin, edit.id, ["medical"]);
+
+    const res = await app.request(
+      `/guide-revisions/${edit.id}/diff/prev`,
+      {},
+      env
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      disclaimers: { changed: boolean };
+    };
+    expect(body.disclaimers.changed).toBe(false);
+  });
+});
